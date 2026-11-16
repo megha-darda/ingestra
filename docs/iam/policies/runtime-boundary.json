@@ -1,0 +1,168 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadApplicationInventoryJobsAndJournal",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:Query"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-InventoryTable-*",
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-JobsTable-*",
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-JournalTable-*"
+      ]
+    },
+    {
+      "Sid": "TransactionalApplicationPuts",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-InventoryTable-*",
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-JobsTable-*",
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-JournalTable-*"
+      ],
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "dynamodb:EnclosingOperation": [
+            "TransactWriteItems"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TransactionalInventoryDeletes",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-InventoryTable-*",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "dynamodb:EnclosingOperation": [
+            "TransactWriteItems"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TransactionalJobFences",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:ConditionCheckItem"
+      ],
+      "Resource": "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-JobsTable-*",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "dynamodb:EnclosingOperation": [
+            "TransactWriteItems"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadAndWriteOnlyApplicationObjectPrefixes",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::ingestra-dev-uploadbucket-*/uploads/*",
+        "arn:aws:s3:::ingestra-dev-uploadbucket-*/plans/*",
+        "arn:aws:s3:::ingestra-dev-uploadbucket-*/outcomes/*",
+        "arn:aws:s3:::ingestra-dev-uploadbucket-*/reports/*"
+      ]
+    },
+    {
+      "Sid": "InvokeOnlyWorkerAndValidators",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:InvokeFunction"
+      ],
+      "Resource": [
+        "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:ingestra-dev-WorkerFunction-*",
+        "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:ingestra-dev-ElectronicsFunction-*",
+        "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:ingestra-dev-GroceriesFunction-*"
+      ]
+    },
+    {
+      "Sid": "StartOnlyApplicationWorkflows",
+      "Effect": "Allow",
+      "Action": [
+        "states:StartExecution"
+      ],
+      "Resource": [
+        "arn:aws:states:eu-central-1:ACCOUNT_ID:stateMachine:PreviewWorkflow-*",
+        "arn:aws:states:eu-central-1:ACCOUNT_ID:stateMachine:ImportWorkflow-*",
+        "arn:aws:states:eu-central-1:ACCOUNT_ID:stateMachine:RollbackWorkflow-*"
+      ]
+    },
+    {
+      "Sid": "WriteOnlyApplicationLambdaLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-ApiFunction-*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-WorkerFunction-*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-ElectronicsFunction-*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-GroceriesFunction-*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-ApiFunction-*:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-WorkerFunction-*:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-ElectronicsFunction-*:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-GroceriesFunction-*:*"
+      ]
+    },
+    {
+      "Sid": "ExistingWorkflowLogDeliveryApis",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogDelivery",
+        "logs:GetLogDelivery",
+        "logs:UpdateLogDelivery",
+        "logs:DeleteLogDelivery",
+        "logs:ListLogDeliveries",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "AllowOnlyDynamoDbManagedKeyUseThroughDynamoDb",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncryptFrom",
+        "kms:ReEncryptTo",
+        "kms:GenerateDataKey",
+        "kms:GenerateDataKeyWithoutPlaintext",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ],
+      "Resource": "arn:aws:kms:eu-central-1:ACCOUNT_ID:key/*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "dynamodb.eu-central-1.amazonaws.com",
+          "kms:CallerAccount": "ACCOUNT_ID"
+        },
+        "ForAnyValue:StringEquals": {
+          "kms:ResourceAliases": "alias/aws/dynamodb"
+        }
+      }
+    }
+  ]
+}

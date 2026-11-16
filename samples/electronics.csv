@@ -1,0 +1,8 @@
+sku,name,quantity,price,category,warrantyMonths
+E100,Studio wireless headphones,100,89.00,Audio,24
+E200,USB-C travel dock,24,49.00,Accessories,12
+E300,Portable SSD 1TB,40,109.00,Storage,36
+E400,Compact mechanical keyboard,30,79.00,Accessories,24
+E500,4K desk monitor,-5,299.00,Displays,24
+E600,Wireless mouse,10,29.00,Accessories,12
+E600,Wireless mouse duplicate,12,29.00,Accessories,12

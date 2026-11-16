@@ -1,0 +1,171 @@
+{
+  "Comment": "Bounded record references; plans and per-record reports stay in S3.",
+  "StartAt": "Prepare",
+  "States": {
+    "Prepare": {
+      "Type": "Task",
+      "Resource": "${WorkerArn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Parameters": {
+        "jobId.$": "$.jobId",
+        "attempt.$": "$.attempt",
+        "action": "execute",
+        "stage": "prepare"
+      },
+      "Next": "ProcessRecords",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": null,
+          "Next": "WorkflowFailed"
+        }
+      ]
+    },
+    "ProcessRecords": {
+      "Type": "Map",
+      "ItemsPath": "$.refs",
+      "MaxConcurrency": 5,
+      "ItemSelector": {
+        "jobId.$": "$.jobId",
+        "attempt.$": "$.attempt",
+        "action": "execute",
+        "ref.$": "$$.Map.Item.Value"
+      },
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "ProcessRecord",
+        "States": {
+          "ProcessRecord": {
+            "Type": "Task",
+            "Resource": "${WorkerArn}",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "States.TaskFailed"
+                ],
+                "IntervalSeconds": 2,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "Parameters": {
+              "jobId.$": "$.jobId",
+              "attempt.$": "$.attempt",
+              "action": "execute",
+              "stage": "process",
+              "ref.$": "$.ref"
+            },
+            "End": true,
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": null,
+                "Next": "RecordFailure"
+              }
+            ]
+          },
+          "RecordFailure": {
+            "Type": "Task",
+            "Resource": "${WorkerArn}",
+            "Retry": [
+              {
+                "ErrorEquals": [
+                  "States.TaskFailed"
+                ],
+                "IntervalSeconds": 2,
+                "MaxAttempts": 3,
+                "BackoffRate": 2
+              }
+            ],
+            "Parameters": {
+              "jobId.$": "$.jobId",
+              "attempt.$": "$.attempt",
+              "action": "execute",
+              "stage": "recordFailure",
+              "ref.$": "$.ref"
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultPath": null,
+      "Next": "Finalize",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": null,
+          "Next": "WorkflowFailed"
+        }
+      ]
+    },
+    "Finalize": {
+      "Type": "Task",
+      "Resource": "${WorkerArn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Parameters": {
+        "jobId.$": "$.jobId",
+        "attempt.$": "$.attempt",
+        "action": "execute",
+        "stage": "finish",
+        "refs.$": "$.refs"
+      },
+      "End": true,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": null,
+          "Next": "WorkflowFailed"
+        }
+      ]
+    },
+    "WorkflowFailed": {
+      "Type": "Task",
+      "Resource": "${WorkerArn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Parameters": {
+        "jobId.$": "$.jobId",
+        "attempt.$": "$.attempt",
+        "action": "execute",
+        "stage": "fail"
+      },
+      "End": true
+    }
+  }
+}

@@ -1,0 +1,49 @@
+%%{init: {"theme":"base","markdownAutoWrap":false,"themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","lineColor":"#64748b","edgeLabelBackground":"#ffffff"},"flowchart":{"htmlLabels":false,"wrappingWidth":1200,"curve":"linear","nodeSpacing":30,"rankSpacing":45,"useMaxWidth":false}}}%%
+flowchart TB
+    accTitle: Ingestra - AWS serverless architecture
+    accDescr: Amplify serves the React browser app. The browser calls an API Gateway HTTP API and uploads directly to private S3. An API Lambda starts three separate asynchronous Standard Step Functions workflows. Preview chooses one of two validator Lambdas. Import and rollback use a shared worker and conditional transactions across three DynamoDB tables. Supporting services are IAM, CloudWatch Logs, DynamoDB-managed KMS encryption, and SAM/CloudFormation deployment with a separate S3 artifact bucket.
+    HOST["AWS Amplify Hosting<br/>React static frontend"]
+    USER["Browser<br/>Review - approve - recover"]
+    HOST -->|"HTTPS assets"| USER
+    subgraph AWS["AWS backend - eu-central-1 - SAM stack: ingestra-dev"]
+        API["Amazon API Gateway<br/>HTTP API"]
+        HTTP["AWS Lambda<br/>ApiFunction<br/>API + upload URL signing"]
+        subgraph SF["AWS Step Functions - STANDARD"]
+            P["PreviewWorkflow<br/>Choice: inventory type"]
+            I["ImportWorkflow<br/>Prepare - Inline Map - Finalize<br/>Concurrency: 5"]
+            R["RollbackWorkflow<br/>Prepare - Inline Map - Finalize<br/>Concurrency: 5"]
+        end
+        V["AWS Lambda - 2 validators<br/>ElectronicsFunction<br/>GroceriesFunction"]
+        W["AWS Lambda<br/>WorkerFunction<br/>Import + rollback tasks"]
+        S3[("Amazon S3 - private bucket<br/>uploads/ - plans/<br/>outcomes/ - reports/<br/>SSE-S3; TLS required")]
+        DB[("Amazon DynamoDB - 3 tables<br/>InventoryTable<br/>JobsTable<br/>JournalTable<br/>On-demand + PITR")]
+        API -->|"Sync invoke"| HTTP
+        HTTP -.->|"Async start: preview"| P
+        HTTP -.->|"Async start: execute"| I
+        HTTP -.->|"Async start: rollback"| R
+        P -->|"Choose one validator Task"| V
+        I -->|"Lambda Tasks"| W
+        R -->|"Lambda Tasks"| W
+        V -->|"Read upload; save plan"| S3
+        V -->|"Read inventory; update job"| DB
+        W -->|"Read plan; save outcomes / report"| S3
+        W -->|"Conditional transactions:<br/>job check + inventory + journal"| DB
+        HTTP -->|"Table reads; job claims / PATCH"| DB
+        HTTP -->|"Read plans / reports"| S3
+    end
+    USER -->|"HTTPS JSON API<br/>GET / POST / PATCH + polling"| API
+    USER -->|"Direct presigned PUT"| S3
+    classDef edge fill:#e8f4f3,stroke:#18716b,color:#142c3c,stroke-width:1.5px;
+    classDef api fill:#f3eaff,stroke:#7950ae,color:#142c3c,stroke-width:1.5px;
+    classDef lambda fill:#fff1df,stroke:#be741c,color:#142c3c,stroke-width:1.5px;
+    classDef workflow fill:#f8e9f3,stroke:#a44589,color:#142c3c,stroke-width:1.5px;
+    classDef storage fill:#ebf6e9,stroke:#568542,color:#142c3c,stroke-width:1.5px;
+    classDef table fill:#eaf2ff,stroke:#4278b5,color:#142c3c,stroke-width:1.5px;
+    class HOST,USER edge;
+    class API api;
+    class HTTP,V,W lambda;
+    class P,I,R workflow;
+    class S3 storage;
+    class DB table;
+    style AWS fill:#ffffff,stroke:#9aaabd,stroke-width:1.5px
+    style SF fill:#fffafd,stroke:#d1abc7

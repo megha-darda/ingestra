@@ -1,0 +1,128 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateOnlySevenRuntimeRolesWithMandatoryBoundary",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ApiFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-WorkerFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ElectronicsFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-GroceriesFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-PreviewWorkflowRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ImportWorkflowRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-RollbackWorkflowRole-*"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::ACCOUNT_ID:policy/IngestraDevRuntimeBoundary"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlySevenRuntimeRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription",
+        "iam:DeleteRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:TagRole",
+        "iam:UntagRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ApiFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-WorkerFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ElectronicsFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-GroceriesFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-PreviewWorkflowRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ImportWorkflowRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-RollbackWorkflowRole-*"
+      ]
+    },
+    {
+      "Sid": "KeepOnlyTheApprovedBoundaryOnRuntimeRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PutRolePermissionsBoundary"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ApiFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-WorkerFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ElectronicsFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-GroceriesFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-PreviewWorkflowRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ImportWorkflowRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-RollbackWorkflowRole-*"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::ACCOUNT_ID:policy/IngestraDevRuntimeBoundary"
+        }
+      }
+    },
+    {
+      "Sid": "AttachOnlyBasicLambdaLogsPolicy",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ApiFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-WorkerFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ElectronicsFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-GroceriesFunctionRole-*"
+      ],
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        }
+      }
+    },
+    {
+      "Sid": "PassOnlyFunctionRolesToLambda",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ApiFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-WorkerFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ElectronicsFunctionRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-GroceriesFunctionRole-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "lambda.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "PassOnlyWorkflowRolesToStepFunctions",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-PreviewWorkflowRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-ImportWorkflowRole-*",
+        "arn:aws:iam::ACCOUNT_ID:role/ingestra-dev-RollbackWorkflowRole-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "states.amazonaws.com"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+sku,name,quantity,price,category,expiryDate
+G100,Organic oat milk,150,2.49,Dairy alternatives,2027-05-01
+G200,Arabica coffee 250g,25,7.90,Pantry,2027-10-01
+G300,Wholegrain pasta,60,1.89,Pantry,2028-02-10
+G400,Fresh strawberries,12,3.99,Produce,2027-02-30
+G500,Greek yogurt,15,1.49,Dairy,2027-03-10
+G500,Greek yogurt duplicate,20,1.49,Dairy,2027-03-10

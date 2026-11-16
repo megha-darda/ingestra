@@ -1,0 +1,104 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageOnlyTheThreeApplicationTables",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:UpdateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:DescribeContinuousBackups",
+        "dynamodb:UpdateContinuousBackups",
+        "dynamodb:DescribeTimeToLive",
+        "dynamodb:DescribeContributorInsights",
+        "dynamodb:DescribeKinesisStreamingDestination",
+        "dynamodb:GetResourcePolicy",
+        "dynamodb:ListTagsOfResource",
+        "dynamodb:TagResource",
+        "dynamodb:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-InventoryTable-*",
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-JobsTable-*",
+        "arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/ingestra-dev-JournalTable-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyTheGeneratedUploadsBucketInFrankfurt",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket"
+      ],
+      "Resource": "arn:aws:s3:::ingestra-dev-uploadbucket-*",
+      "Condition": {
+        "StringEquals": {
+          "s3:LocationConstraint": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureOnlyUploadsBucketFeaturesInTemplate",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutEncryptionConfiguration",
+        "s3:PutBucketCORS",
+        "s3:PutLifecycleConfiguration",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:TagResource",
+        "s3:UntagResource",
+        "s3:PutBucketPolicy",
+        "s3:DeleteBucketPolicy",
+        "s3:DeleteBucket"
+      ],
+      "Resource": "arn:aws:s3:::ingestra-dev-uploadbucket-*"
+    },
+    {
+      "Sid": "ReadUploadsBucketConfigurationForCloudFormation",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketAcl",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetAnalyticsConfiguration",
+        "s3:GetBucketCORS",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetInventoryConfiguration",
+        "s3:GetBucketLogging",
+        "s3:GetMetricsConfiguration",
+        "s3:GetBucketNotification",
+        "s3:GetBucketVersioning",
+        "s3:GetReplicationConfiguration",
+        "s3:GetBucketWebsite",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketTagging",
+        "s3:ListTagsForResource",
+        "s3:GetBucketAbac",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetIntelligentTieringConfiguration",
+        "s3:GetBucketMetadataTableConfiguration"
+      ],
+      "Resource": "arn:aws:s3:::ingestra-dev-uploadbucket-*"
+    },
+    {
+      "Sid": "ReadOnlyThisStacksDeploymentArtifacts",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::ingestra-dev-sam-artifacts-ACCOUNT_ID-eu-central-1/ingestra-dev/*"
+    }
+  ]
+}

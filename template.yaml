@@ -1,0 +1,549 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Ingestra - previewed inventory ingestion and conflict-aware recovery
+  (public demo API).
+Parameters:
+  FrontendOrigin:
+    Type: String
+    Default: http://localhost:5173
+    Description: Exact browser origin allowed by API and S3 CORS.
+  DemoTenant:
+    Type: String
+    Default: demo-retail
+    AllowedPattern: '[a-zA-Z0-9-]{1,50}'
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 60
+    MemorySize: 512
+    Architectures:
+    - x86_64
+    Environment:
+      Variables:
+        DEMO_TENANT:
+          Ref: DemoTenant
+        BUCKET:
+          Ref: UploadBucket
+        INVENTORY_TABLE:
+          Ref: InventoryTable
+        JOBS_TABLE:
+          Ref: JobsTable
+        JOURNAL_TABLE:
+          Ref: JournalTable
+Resources:
+  InventoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: PK
+        AttributeType: S
+      - AttributeName: SK
+        AttributeType: S
+      KeySchema:
+      - AttributeName: PK
+        KeyType: HASH
+      - AttributeName: SK
+        KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+  JobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: PK
+        AttributeType: S
+      - AttributeName: SK
+        AttributeType: S
+      KeySchema:
+      - AttributeName: PK
+        KeyType: HASH
+      - AttributeName: SK
+        KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+  JournalTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: PK
+        AttributeType: S
+      - AttributeName: SK
+        AttributeType: S
+      KeySchema:
+      - AttributeName: PK
+        KeyType: HASH
+      - AttributeName: SK
+        KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+        - AllowedOrigins:
+          - Ref: FrontendOrigin
+          AllowedMethods:
+          - PUT
+          AllowedHeaders:
+          - content-type
+          - x-amz-server-side-encryption
+          MaxAge: 300
+      LifecycleConfiguration:
+        Rules:
+        - Id: ExpireUnprocessedUploads
+          Status: Enabled
+          Prefix: uploads/
+          ExpirationInDays: 7
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: UploadBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Deny
+          Principal: '*'
+          Action: s3:*
+          Resource:
+          - Fn::GetAtt:
+            - UploadBucket
+            - Arn
+          - Fn::Sub: ${UploadBucket.Arn}/*
+          Condition:
+            Bool:
+              aws:SecureTransport: 'false'
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+        - Ref: FrontendOrigin
+        AllowHeaders:
+        - content-type
+        AllowMethods:
+        - GET
+        - POST
+        - PATCH
+        - OPTIONS
+        MaxAge: 300
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: ingestra.handler.api
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - dynamodb:GetItem
+          - dynamodb:Query
+          Resource: &id001
+          - Fn::GetAtt:
+            - InventoryTable
+            - Arn
+          - Fn::GetAtt:
+            - JobsTable
+            - Arn
+          - Fn::GetAtt:
+            - JournalTable
+            - Arn
+        - Effect: Allow
+          Action:
+          - dynamodb:PutItem
+          Resource:
+          - Fn::GetAtt:
+            - InventoryTable
+            - Arn
+          - Fn::GetAtt:
+            - JobsTable
+            - Arn
+          Condition:
+            ForAnyValue:StringEquals:
+              dynamodb:EnclosingOperation:
+              - TransactWriteItems
+        - Effect: Allow
+          Action:
+          - s3:GetObject
+          Resource:
+          - &id003
+            Fn::Sub: ${UploadBucket.Arn}/plans/*
+          - &id004
+            Fn::Sub: ${UploadBucket.Arn}/outcomes/*
+          - &id005
+            Fn::Sub: ${UploadBucket.Arn}/reports/*
+        - Effect: Allow
+          Action:
+          - s3:PutObject
+          Resource:
+          - &id002
+            Fn::Sub: ${UploadBucket.Arn}/uploads/*
+        - Effect: Allow
+          Action:
+          - states:StartExecution
+          Resource:
+          - Fn::GetAtt:
+            - PreviewWorkflow
+            - Arn
+          - Fn::GetAtt:
+            - ImportWorkflow
+            - Arn
+          - Fn::GetAtt:
+            - RollbackWorkflow
+            - Arn
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: HttpApi
+            Path: /{proxy+}
+            Method: ANY
+      Environment:
+        Variables:
+          PREVIEW_WORKFLOW:
+            Fn::GetAtt:
+            - PreviewWorkflow
+            - Arn
+          IMPORT_WORKFLOW:
+            Fn::GetAtt:
+            - ImportWorkflow
+            - Arn
+          ROLLBACK_WORKFLOW:
+            Fn::GetAtt:
+            - RollbackWorkflow
+            - Arn
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${ApiFunction}
+      RetentionInDays: 14
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: ingestra.handler.worker
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - dynamodb:GetItem
+          - dynamodb:Query
+          Resource: *id001
+        - Effect: Allow
+          Action:
+          - dynamodb:PutItem
+          Resource: *id001
+          Condition:
+            ForAnyValue:StringEquals:
+              dynamodb:EnclosingOperation:
+              - TransactWriteItems
+        - Effect: Allow
+          Action:
+          - dynamodb:DeleteItem
+          Resource:
+          - Fn::GetAtt:
+            - InventoryTable
+            - Arn
+          Condition:
+            ForAnyValue:StringEquals:
+              dynamodb:EnclosingOperation:
+              - TransactWriteItems
+        - Effect: Allow
+          Action:
+          - dynamodb:ConditionCheckItem
+          Resource:
+          - Fn::GetAtt:
+            - JobsTable
+            - Arn
+          Condition:
+            ForAnyValue:StringEquals:
+              dynamodb:EnclosingOperation:
+              - TransactWriteItems
+        - Effect: Allow
+          Action:
+          - s3:GetObject
+          - s3:PutObject
+          Resource:
+          - *id002
+          - *id003
+          - *id004
+          - *id005
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${WorkerFunction}
+      RetentionInDays: 14
+  ElectronicsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: ingestra.handler.electronics_validator
+      Policies:
+      - Version: '2012-10-17'
+        Statement: &id006
+        - Effect: Allow
+          Action:
+          - dynamodb:GetItem
+          - dynamodb:Query
+          Resource:
+          - Fn::GetAtt:
+            - InventoryTable
+            - Arn
+          - Fn::GetAtt:
+            - JobsTable
+            - Arn
+        - Effect: Allow
+          Action:
+          - dynamodb:PutItem
+          Resource:
+          - Fn::GetAtt:
+            - JobsTable
+            - Arn
+          Condition:
+            ForAnyValue:StringEquals:
+              dynamodb:EnclosingOperation:
+              - TransactWriteItems
+        - Effect: Allow
+          Action:
+          - s3:GetObject
+          Resource:
+          - *id002
+          - *id003
+        - Effect: Allow
+          Action:
+          - s3:PutObject
+          Resource:
+          - *id003
+  ElectronicsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${ElectronicsFunction}
+      RetentionInDays: 14
+  GroceriesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: backend/
+      Handler: ingestra.handler.groceries_validator
+      Policies:
+      - Version: '2012-10-17'
+        Statement: *id006
+  GroceriesLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${GroceriesFunction}
+      RetentionInDays: 14
+  PreviewWorkflowLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/vendedlogs/states/${AWS::StackName}-preview
+      RetentionInDays: 14
+  PreviewWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: STANDARD
+      DefinitionUri: workflows/preview.asl.json
+      DefinitionSubstitutions:
+        WorkerArn:
+          Fn::GetAtt:
+          - WorkerFunction
+          - Arn
+        ElectronicsArn:
+          Fn::GetAtt:
+          - ElectronicsFunction
+          - Arn
+        GroceriesArn:
+          Fn::GetAtt:
+          - GroceriesFunction
+          - Arn
+      Logging:
+        Level: ERROR
+        IncludeExecutionData: false
+        Destinations:
+        - CloudWatchLogsLogGroup:
+            LogGroupArn:
+              Fn::GetAtt:
+              - PreviewWorkflowLogs
+              - Arn
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - lambda:InvokeFunction
+          Resource:
+          - Fn::GetAtt:
+            - WorkerFunction
+            - Arn
+          - Fn::GetAtt:
+            - ElectronicsFunction
+            - Arn
+          - Fn::GetAtt:
+            - GroceriesFunction
+            - Arn
+        - Effect: Allow
+          Action:
+          - logs:CreateLogDelivery
+          - logs:GetLogDelivery
+          - logs:UpdateLogDelivery
+          - logs:DeleteLogDelivery
+          - logs:ListLogDeliveries
+          - logs:PutResourcePolicy
+          - logs:DescribeResourcePolicies
+          - logs:DescribeLogGroups
+          Resource:
+          - '*'
+  ImportWorkflowLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/vendedlogs/states/${AWS::StackName}-import
+      RetentionInDays: 14
+  ImportWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: STANDARD
+      DefinitionUri: workflows/import.asl.json
+      DefinitionSubstitutions:
+        WorkerArn:
+          Fn::GetAtt:
+          - WorkerFunction
+          - Arn
+      Logging:
+        Level: ERROR
+        IncludeExecutionData: false
+        Destinations:
+        - CloudWatchLogsLogGroup:
+            LogGroupArn:
+              Fn::GetAtt:
+              - ImportWorkflowLogs
+              - Arn
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - lambda:InvokeFunction
+          Resource:
+          - Fn::GetAtt:
+            - WorkerFunction
+            - Arn
+        - Effect: Allow
+          Action:
+          - logs:CreateLogDelivery
+          - logs:GetLogDelivery
+          - logs:UpdateLogDelivery
+          - logs:DeleteLogDelivery
+          - logs:ListLogDeliveries
+          - logs:PutResourcePolicy
+          - logs:DescribeResourcePolicies
+          - logs:DescribeLogGroups
+          Resource:
+          - '*'
+  RollbackWorkflowLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/vendedlogs/states/${AWS::StackName}-rollback
+      RetentionInDays: 14
+  RollbackWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: STANDARD
+      DefinitionUri: workflows/rollback.asl.json
+      DefinitionSubstitutions:
+        WorkerArn:
+          Fn::GetAtt:
+          - WorkerFunction
+          - Arn
+      Logging:
+        Level: ERROR
+        IncludeExecutionData: false
+        Destinations:
+        - CloudWatchLogsLogGroup:
+            LogGroupArn:
+              Fn::GetAtt:
+              - RollbackWorkflowLogs
+              - Arn
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - lambda:InvokeFunction
+          Resource:
+          - Fn::GetAtt:
+            - WorkerFunction
+            - Arn
+        - Effect: Allow
+          Action:
+          - logs:CreateLogDelivery
+          - logs:GetLogDelivery
+          - logs:UpdateLogDelivery
+          - logs:DeleteLogDelivery
+          - logs:ListLogDeliveries
+          - logs:PutResourcePolicy
+          - logs:DescribeResourcePolicies
+          - logs:DescribeLogGroups
+          Resource:
+          - '*'
+Outputs:
+  ApiUrl:
+    Value:
+      Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+  UploadBucketName:
+    Value:
+      Ref: UploadBucket
+  InventoryTableName:
+    Value:
+      Ref: InventoryTable
+  JobsTableName:
+    Value:
+      Ref: JobsTable
+  JournalTableName:
+    Value:
+      Ref: JournalTable
+  PreviewWorkflowArn:
+    Value:
+      Fn::GetAtt:
+      - PreviewWorkflow
+      - Arn
+  ImportWorkflowArn:
+    Value:
+      Fn::GetAtt:
+      - ImportWorkflow
+      - Arn
+  RollbackWorkflowArn:
+    Value:
+      Fn::GetAtt:
+      - RollbackWorkflow
+      - Arn

@@ -1,0 +1,6 @@
+-r backend/requirements.txt
+pytest>=8,<10
+moto[dynamodb,s3,stepfunctions]>=5,<6
+aws-sam-cli>=1.140,<2
+cfn-lint>=1.30,<2
+PyYAML>=6,<7

@@ -1,0 +1,91 @@
+{
+  "Comment": "Small job references only; validators store full plan in private S3.",
+  "StartAt": "InventoryType",
+  "States": {
+    "InventoryType": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.inventoryType",
+          "StringEquals": "electronics",
+          "Next": "ValidateElectronics"
+        },
+        {
+          "Variable": "$.inventoryType",
+          "StringEquals": "groceries",
+          "Next": "ValidateGroceries"
+        }
+      ],
+      "Default": "WorkflowFailed"
+    },
+    "ValidateElectronics": {
+      "Type": "Task",
+      "Resource": "${ElectronicsArn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.failure",
+          "Next": "WorkflowFailed"
+        }
+      ]
+    },
+    "ValidateGroceries": {
+      "Type": "Task",
+      "Resource": "${GroceriesArn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.failure",
+          "Next": "WorkflowFailed"
+        }
+      ]
+    },
+    "WorkflowFailed": {
+      "Type": "Task",
+      "Resource": "${WorkerArn}",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Parameters": {
+        "stage": "fail",
+        "action": "preview",
+        "jobId.$": "$.jobId",
+        "attempt.$": "$.attempt"
+      },
+      "End": true
+    }
+  }
+}

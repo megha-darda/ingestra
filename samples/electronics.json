@@ -1,0 +1,6 @@
+[
+  {"sku":"E100","name":"Studio wireless headphones","quantity":100,"price":"89.00","category":"Audio","warrantyMonths":24},
+  {"sku":"E200","name":"USB-C travel dock","quantity":24,"price":"49.00","category":"Accessories","warrantyMonths":12},
+  {"sku":"E700","name":"Pocket projector","quantity":8,"price":"229.00","serialNumber":"LOT-2026-11","warrantyMonths":24},
+  {"sku":"E800","name":"Invalid charger","quantity":-1,"price":"15.00"}
+]

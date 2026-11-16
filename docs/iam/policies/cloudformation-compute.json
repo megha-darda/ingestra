@@ -1,0 +1,214 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ExpandOnlyTheRegionalServerlessTransform",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet"
+      ],
+      "Resource": "arn:aws:cloudformation:eu-central-1:aws:transform/Serverless-2016-10-31",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyTheFourGeneratedFunctions",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:GetFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:DeleteFunction",
+        "lambda:GetFunctionCodeSigningConfig",
+        "lambda:GetFunctionRecursionConfig",
+        "lambda:GetRuntimeManagementConfig",
+        "lambda:GetFunctionScalingConfig",
+        "lambda:TagResource",
+        "lambda:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:ingestra-dev-ApiFunction-*",
+        "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:ingestra-dev-WorkerFunction-*",
+        "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:ingestra-dev-ElectronicsFunction-*",
+        "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:ingestra-dev-GroceriesFunction-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyTheApiGatewayInvokePermission",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:GetPolicy"
+      ],
+      "Resource": "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:ingestra-dev-ApiFunction-*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyTheThreeGeneratedStateMachines",
+      "Effect": "Allow",
+      "Action": [
+        "states:CreateStateMachine",
+        "states:DescribeStateMachine",
+        "states:UpdateStateMachine",
+        "states:DeleteStateMachine",
+        "states:TagResource",
+        "states:UntagResource",
+        "states:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:states:eu-central-1:ACCOUNT_ID:stateMachine:PreviewWorkflow-*",
+        "arn:aws:states:eu-central-1:ACCOUNT_ID:stateMachine:ImportWorkflow-*",
+        "arn:aws:states:eu-central-1:ACCOUNT_ID:stateMachine:RollbackWorkflow-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "CreateTheHttpApiCollection",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:POST",
+        "apigateway:PUT"
+      ],
+      "Resource": "arn:aws:apigateway:eu-central-1::/apis",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ManageHttpApiAndDefaultStage",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:PATCH",
+        "apigateway:DELETE"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:eu-central-1::/apis/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ManageHttpApiTags",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PUT",
+        "apigateway:DELETE"
+      ],
+      "Resource": "arn:aws:apigateway:eu-central-1::/tags/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ManageDefaultStageProviderTags",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:TagResource",
+        "apigateway:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:apigateway:eu-central-1::/apis/*/stages",
+        "arn:aws:apigateway:eu-central-1::/apis/*/stages/$default"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyApplicationLogGroups",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:ListTagsForResource",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup",
+        "logs:GetDataProtectionPolicy"
+      ],
+      "Resource": [
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-ApiFunction-*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-WorkerFunction-*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-ElectronicsFunction-*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-GroceriesFunction-*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/vendedlogs/states/ingestra-dev-preview",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/vendedlogs/states/ingestra-dev-import",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/vendedlogs/states/ingestra-dev-rollback",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-ApiFunction-*:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-WorkerFunction-*:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-ElectronicsFunction-*:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/lambda/ingestra-dev-GroceriesFunction-*:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/vendedlogs/states/ingestra-dev-preview:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/vendedlogs/states/ingestra-dev-import:*",
+        "arn:aws:logs:eu-central-1:ACCOUNT_ID:log-group:/aws/vendedlogs/states/ingestra-dev-rollback:*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "DescribeLogIndexesForProviderRead",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeIndexPolicies"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    },
+    {
+      "Sid": "DescribeLogConfigurationForProviderRead",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeResourcePolicies"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# Application dependencies for local development; SAM uses backend/requirements.txt.
+-r backend/requirements.txt

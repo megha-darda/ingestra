@@ -1,0 +1,50 @@
+{
+  "typeName": "AWS::ApiGatewayV2::Stage",
+  "region": "eu-central-1",
+  "source": "https://schema.cloudformation.eu-central-1.amazonaws.com/CloudformationSchema.zip",
+  "schemaFile": "aws-apigatewayv2-stage.json",
+  "tagging": {
+    "permissions": [
+      "apigateway:POST",
+      "apigateway:TagResource",
+      "apigateway:UntagResource"
+    ],
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "tagProperty": "/properties/Tags",
+    "cloudFormationSystemTags": true
+  },
+  "handlers": {
+    "read": {
+      "permissions": [
+        "apigateway:GET"
+      ]
+    },
+    "create": {
+      "permissions": [
+        "apigateway:POST",
+        "apigateway:TagResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "apigateway:PATCH",
+        "apigateway:POST",
+        "apigateway:DELETE",
+        "apigateway:TagResource",
+        "apigateway:UntagResource"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "apigateway:GET"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "apigateway:DELETE"
+      ]
+    }
+  }
+}
